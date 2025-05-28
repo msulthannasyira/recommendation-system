@@ -135,7 +135,7 @@ print("\nDistribusi Review Rekomendasi (%):")
 print(recommend_counts.round(2))
 ```
 
-#### 1. Distribusi rating game 
+#### Distribusi rating game 
 Distribusi jumlah game berdasarkan kolom `rating`
 
 ```
@@ -154,7 +154,7 @@ Name: rating, dtype: int64
 - Mostly Positive dan Very Positive adalah dua kategori rating terbanyak.
 - Hal ini menunjukkan bahwa mayoritas game mendapatkan respons yang baik dari pengguna.
 
-#### 2. Positive Ratio per Rating
+#### Positive Ratio per Rating
 Rata-rata nilai `positive_ratio` untuk tiap kategori `rating`:
 
 ```
@@ -173,7 +173,7 @@ Name: positive_ratio, dtype: float64
 - Game dengan rating Overwhelmingly Positive dan Very Positive memiliki rasio ulasan positif > 89%.
 - Sementara itu, game dengan rating Negative dan Overwhelmingly Negative rata-ratanya hanya di kisaran 23–34%.
 
-#### 3. Dukungan Platform
+#### Dukungan Platform
 Persentase game yang mendukung masing-masing platform:
 
 ```
@@ -192,7 +192,7 @@ Dalam bentuk persentase:
 
 Artinya hampir semua game mendukung Windows, sementara dukungan untuk Linux dan macOS masih terbatas. Dukungan Steam Deck cukup signifikan.
 
-#### 4. Distribusi Review yang Direkomendasikan
+#### Distribusi Review yang Direkomendasikan
 
 Distribusi `is_recommended` pada data:
 
@@ -208,6 +208,164 @@ Persentase:
 - Tidak direkomendasikan (False): 32.83%
 
 Sekitar 2 dari 3 review menyatakan game direkomendasikan, menunjukkan kecenderungan positif dari komunitas pengguna.
+
+## 4. Data Preparation
+### Penggabungan Dataset (Merge)
+Proses:
+- Dataset recommendations digabungkan dengan dataset `games` berdasarkan `app_id`.
+- Kemudian hasilnya digabungkan lagi dengan dataset `users` berdasarkan `user_id`.
+
+```python
+merged_df = recommendations.merge(games, on='app_id', how='left')
+merged_df = merged_df.merge(users, on='user_id', how='left')
+```
+
+Proses ini dilakukan untuk mendapatkan data yang lengkap dari berbagai sumber (rekomendasi, game, dan pengguna) dalam satu dataset yang dapat dianalisis secara menyeluruh.
+
+### Konversi Tipe Data
+Proses:
+- Kolom tanggal dikonversi ke format `datetime` agar bisa diproses sebagai waktu.
+- Kolom-kolom biner (`win`,`mac`, `linux`, `steam_deck`, dan `is_recommended`) dikonversi ke tipe `bool`.
+
+```python
+recommendations['date'] = pd.to_datetime(recommendations['date'])
+games['date_release'] = pd.to_datetime(games['date_release'])
+
+games[['win', 'mac', 'linux', 'steam_deck']] = games[['win', 'mac', 'linux', 'steam_deck']].astype(bool)
+recommendations['is_recommended'] = recommendations['is_recommended'].astype(bool)
+```
+
+Hal ini dilakukan agar tipe data sesuai dengan konteks analisis dan memudahkan proses manipulasi, filtering, dan visualisasi.
+
+### Menghapus Nilai Kosong pada Kolom Penting (Drop NA)
+
+Proses dilakukan dengan menghapus baris-baris yang memiliki nilai kosong pada kolom yang dianggap penting, yaitu `title`, `date_release`, `price_final`, `positive_ratio`, `products`, dan `reviews`.
+
+```python
+important_columns = ['title', 'date_release', 'price_final', 'positive_ratio', 'products', 'reviews']
+cleaned_df = merged_df.dropna(subset=important_columns)
+```
+
+Nilai kosong pada kolom ini bisa menyebabkan bias, error dalam model, atau hasil yang tidak valid ketika dilakukan analisis atau pemodelan.
+
+### Menyimpan Dataset Bersih
+
+Dataset yang sudah dibersihkan disimpan ke dalam file CSV agar bisa digunakan kembali pada proses modeling berikutnya tanpa perlu melakukan pembersihan ulan
+
+```python
+cleaned_df.to_csv('cleaned_recommendations.csv', index=False)
+```
+
+Dengan menyimpan versi final dalam bentuk pdf dapat meningkatkan efisiensi karena dataset siap digunakan untuk analisis lanjutan atau pemodelan seperti content-based filtering.
+
+## 5. Modelling
+
+### Collaborative Filtering dengan SVD
+Pendekatan Collaborative Filtering digunakan untuk memberikan rekomendasi game berdasarkan preferensi pengguna lain yang memiliki pola serupa. Dalam proyek ini, digunakan algoritma SVD (Singular Value Decomposition) dari pustaka `Surprise`.
+
+#### Persiapan Data
+Dataset yang digunakan memiliki format interaksi pengguna terhadap game, dengan tiga kolom penting:
+- user_id: ID pengguna
+- app_id: ID game
+- is_recommended: Label biner (0 = tidak direkomendasikan, 1 = direkomendasikan)
+
+```python
+cf_data = recommendations[['user_id', 'app_id', 'is_recommended']].copy()
+cf_data['is_recommended'] = cf_data['is_recommended'].astype(int)
+```
+
+#### Evaluasi Model dengan Cross-Validation
+Model dilatih menggunakan evaluasi 3-fold cross-validation untuk mengukur performa dengan metrik:
+- RMSE (Root Mean Square Error)
+- MAE (Mean Absolute Error)
+
+```python
+from surprise import SVD, Dataset, Reader
+from surprise.model_selection import cross_validate
+
+reader = Reader(rating_scale=(0, 1))
+data = Dataset.load_from_df(cf_data[['user_id', 'app_id', 'is_recommended']], reader)
+
+model = SVD()
+cross_validate(model, data, measures=['RMSE', 'MAE'], cv=3, verbose=True)
+```
+Hasil evaluasinya adalah sebagai berikut:
+
+```
+Evaluating RMSE, MAE of algorithm SVD on 3 split(s).
+
+                  Fold 1  Fold 2  Fold 3  Mean    Std     
+RMSE (testset)    0.3303  0.3293  0.3289  0.3295  0.0006  
+MAE (testset)     0.2136  0.2131  0.2138  0.2135  0.0003  
+Fit time          29.40   30.58   30.46   30.14   0.53    
+Test time         6.27    3.40    3.52    4.40    1.32    
+```
+Hasil evaluasi menunjukkan bahwa model memiliki performa yang konsisten dan akurat dengan nilai RMSE rendah (±0.33) dan MAE rendah (±0.21), yang menandakan estimasi preferensi pengguna cukup tepat.
+
+#### Melatih Model Final
+Setelah evaluasi, model dilatih ulang menggunakan seluruh data untuk menghasilkan model akhir:
+
+```python
+trainset = data.build_full_trainset()
+model.fit(trainset)
+```
+
+#### Fungsi rekomendasi (`recommend_for_user(user_id)`)
+Fungsi ini digunakan untuk memberikan rekomendasi game personalisasi kepada pengguna tertentu berdasarkan estimasi preferensi tertinggi.
+
+```python
+def recommend_for_user(user_id, n=5):
+    all_game_ids = games['app_id'].unique()
+    reviewed_games = cf_data[cf_data['user_id'] == user_id]['app_id'].values
+    unseen_games = [app_id for app_id in all_game_ids if app_id not in reviewed_games]
+
+    if not trainset.knows_user(user_id):
+        print(f"User ID {user_id} tidak ditemukan dalam data pelatihan.")
+        return pd.DataFrame()
+
+    predictions = [model.predict(user_id, app_id) for app_id in unseen_games]
+    top_predictions = sorted(predictions, key=lambda x: x.est, reverse=True)[:n]
+    top_app_ids = [pred.iid for pred in top_predictions]
+    recommended_games = games[games['app_id'].isin(top_app_ids)][['app_id', 'title']]
+    return recommended_games
+```
+
+####  Contoh Output Rekomendasi
+
+```python
+print("\nRekomendasi game untuk user_id = 253880:")
+print(recommend_for_user(253880))
+```
+
+output:
+```
+Rekomendasi game untuk user_id = 253880:
+     app_id                                 title
+14   402890                           Nyctophilia
+21  1845880                  SEARCH ALL - POTIONS
+22  1672690  Across the Galaxy: Stellar Dominator
+29  1764390                       BAD END THEATER
+54  1336950                                VoxFox
+```
+
+jika user tidak ditemukan maka akan muncul pesan berikut:
+
+```python
+User ID <id> tidak ditemukan dalam data pelatihan.
+```
+
+Model Collaborative Filtering berbasis SVD berhasil dibangun dan dievaluasi dengan baik. Dengan akurasi prediksi yang tinggi, sistem mampu memberikan rekomendasi yang relevan berdasarkan preferensi historis pengguna. Fungsi recommend_for_user() memungkinkan personalisasi rekomendasi, dan menangani kasus pengguna baru (cold-start) dengan pemberitahuan yang sesuai.
+
+
+
+
+
+
+
+
+
+
+
 
 
 
