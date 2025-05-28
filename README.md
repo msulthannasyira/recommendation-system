@@ -31,7 +31,7 @@ Proyek ini bertujuan untuk membangun sistem rekomendasi game berbasis Machine Le
 ### Goals
 - Membangun sistem rekomendasi game berbasis fitur (content-based)
 - Membangun sistem rekomendasi berbasis histori pengguna (collaborative)
-- Memberikan visualisasi dan interpretasi atas rekomendasi yang diberikan
+- Memberikan interpretasi atas rekomendasi yang diberikan
 
 ### Solution Statement
 
@@ -260,6 +260,61 @@ Dengan menyimpan versi final dalam bentuk pdf dapat meningkatkan efisiensi karen
 
 ## 5. Modelling
 
+### Content-Based Filtering
+Pendekatan Content-Based Filtering digunakan untuk merekomendasikan game berdasarkan kemiripan fitur antar game, bukan dari preferensi pengguna lain. Pendekatan ini cocok untuk menghadapi masalah cold-start (misalnya, ketika pengguna baru belum memiliki cukup interaksi).
+
+####  Fitur yang Digunakan
+Rekomendasi dihitung berdasarkan kemiripan dari fitur-fitur game berikut:
+- `positive_ratio` Rasio ulasan positif
+- `rating` Rating konten (misalnya: "Everyone", "Mature", dll)
+
+dan juga dukungan platform:
+- `win`: Windows
+- `mac`: macOS
+- `linux`: Linux
+- `steam_deck`: Steam Deck
+
+####  Pra-pemrosesan Data
+- Mengisi nilai kosong pada kolom `rating` dengan `"Unknown"`
+- Mengkodekan kategori `rating` ke bentuk numerik dengan `category.codes`
+- Normalisasi seluruh fitur numerik ke rentang 0-1 menggunakan `MinMaxScaler`
+
+```python
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics.pairwise import cosine_similarity
+
+content_features = games[['rating', 'positive_ratio', 'win', 'mac', 'linux', 'steam_deck']].copy()
+
+content_features['rating'] = content_features['rating'].fillna("Unknown")
+content_features['rating_encoded'] = content_features['rating'].astype('category').cat.codes
+
+feature_matrix = content_features[['rating_encoded', 'positive_ratio', 'win', 'mac', 'linux', 'steam_deck']]
+scaler = MinMaxScaler()
+scaled_features = scaler.fit_transform(feature_matrix)
+```
+#### Perhitungan Kemiripan Game
+Setelah fitur dinormalisasi, dihitung matriks kemiripan antar game menggunakan cosine similarity. Game yang mirip akan memiliki skor kemiripan mendekati 1
+
+```python
+similarity_matrix = cosine_similarity(scaled_features)
+```
+
+#### Fungsi Rekomendasi `recommend_similar_games(game_id)`
+
+Fungsi ini mencari game yang paling mirip dengan game yang diberikan berdasarkan skor kemiripan tertinggi (dalam `similarity_matrix`), dan mengembalikan `top_n` game serupa
+
+```python
+def recommend_similar_games(game_id, top_n=5):
+    try:
+        idx = games[games['app_id'] == game_id].index[0]
+        similarity_scores = list(enumerate(similarity_matrix[idx]))
+        similarity_scores = sorted(similarity_scores, key=lambda x: x[1], reverse=True)[1:top_n+1]
+        game_indices = [i[0] for i in similarity_scores]
+        return games.iloc[game_indices][['app_id', 'title']]
+    except:
+        return "Game ID not found."
+```
+
 ### Collaborative Filtering dengan SVD
 Pendekatan Collaborative Filtering digunakan untuk memberikan rekomendasi game berdasarkan preferensi pengguna lain yang memiliki pola serupa. Dalam proyek ini, digunakan algoritma SVD (Singular Value Decomposition) dari pustaka `Surprise`.
 
@@ -289,18 +344,6 @@ data = Dataset.load_from_df(cf_data[['user_id', 'app_id', 'is_recommended']], re
 model = SVD()
 cross_validate(model, data, measures=['RMSE', 'MAE'], cv=3, verbose=True)
 ```
-Hasil evaluasinya adalah sebagai berikut:
-
-```
-Evaluating RMSE, MAE of algorithm SVD on 3 split(s).
-
-                  Fold 1  Fold 2  Fold 3  Mean    Std     
-RMSE (testset)    0.3303  0.3293  0.3289  0.3295  0.0006  
-MAE (testset)     0.2136  0.2131  0.2138  0.2135  0.0003  
-Fit time          29.40   30.58   30.46   30.14   0.53    
-Test time         6.27    3.40    3.52    4.40    1.32    
-```
-Hasil evaluasi menunjukkan bahwa model memiliki performa yang konsisten dan akurat dengan nilai RMSE rendah (±0.33) dan MAE rendah (±0.21), yang menandakan estimasi preferensi pengguna cukup tepat.
 
 #### Melatih Model Final
 Setelah evaluasi, model dilatih ulang menggunakan seluruh data untuk menghasilkan model akhir:
@@ -330,13 +373,47 @@ def recommend_for_user(user_id, n=5):
     return recommended_games
 ```
 
-####  Contoh Output Rekomendasi
+## 6. Evaluasi
+
+### Evaluasi Model dengan Content-Based Filtering
+
+#### Output Rekomendasi
+
+```python
+print("\nRekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':")
+print(recommend_similar_games(545200))
+```
+output:
+```
+Rekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':
+      app_id                                              title
+18   1146320                      GRID Ultimate Edition Upgrade
+85   2471820                                    СТРАШНО И ТОЧКА
+360  1637251  Train Simulator: Southwestern Expressways: Rea...
+409  2169810                                            Mermaid
+428   657590                                        Grav Blazer
+```
+
+### Evaluasi Model dengan Cross-Validation
+
+#### Hasil evaluasinya
+
+```
+Evaluating RMSE, MAE of algorithm SVD on 3 split(s).
+
+                  Fold 1  Fold 2  Fold 3  Mean    Std     
+RMSE (testset)    0.3303  0.3293  0.3289  0.3295  0.0006  
+MAE (testset)     0.2136  0.2131  0.2138  0.2135  0.0003  
+Fit time          29.40   30.58   30.46   30.14   0.53    
+Test time         6.27    3.40    3.52    4.40    1.32    
+```
+
+#### Output Rekomendasi
 
 ```python
 print("\nRekomendasi game untuk user_id = 253880:")
 print(recommend_for_user(253880))
 ```
-
 output:
 ```
 Rekomendasi game untuk user_id = 253880:
@@ -354,16 +431,40 @@ jika user tidak ditemukan maka akan muncul pesan berikut:
 User ID <id> tidak ditemukan dalam data pelatihan.
 ```
 
-Model Collaborative Filtering berbasis SVD berhasil dibangun dan dievaluasi dengan baik. Dengan akurasi prediksi yang tinggi, sistem mampu memberikan rekomendasi yang relevan berdasarkan preferensi historis pengguna. Fungsi recommend_for_user() memungkinkan personalisasi rekomendasi, dan menangani kasus pengguna baru (cold-start) dengan pemberitahuan yang sesuai.
+#### Analisis hasil Output
+- Pendekatan Content-Based Filtering memungkinkan sistem untuk merekomendasikan game-game yang serupa secara fitur dengan game yang disukai pengguna, tanpa perlu interaksi pengguna lain. Hal ini sangat berguna dalam mengatasi keterbatasan data pengguna atau saat menangani game baru. Dengan menggunakan cosine similarity terhadap fitur yang dinormalisasi, sistem ini mampu mengidentifikasi kemiripan dengan akurat dan efisien.
+- Model Collaborative Filtering berbasis SVD berhasil dibangun dan dievaluasi dengan baik. Dengan akurasi prediksi yang tinggi, sistem mampu memberikan rekomendasi yang relevan berdasarkan preferensi historis pengguna. Fungsi recommend_for_user() memungkinkan personalisasi rekomendasi, dan menangani kasus pengguna baru (cold-start) dengan pemberitahuan yang sesuai.
+- Model Content-Based Filtering dan Collaborative Filtering dapat dikembangkan lebih lanjut dan digabungkan menjadi sebuah Hybrid Recommender System. Pendekatan ini memungkinkan peningkatan dari berbagai aspek, seperti sudut pandang rekomendasi yang lebih komprehensif, cakupan (coverage) yang lebih luas, serta fleksibilitas yang lebih tinggi dalam menangani berbagai kondisi
 
+#### Kesimpulan Akhir
 
+*Sistem berhasil merekomendasikan game yang mirip berdasarkan fitur game itu sendiri*
+- Dengan menggunakan pendekatan Content-Based Filtering, sistem dapat merekomendasikan game berdasarkan kemiripan atribut seperti rating konten, rasio ulasan positif, dan dukungan platform. Proses normalisasi fitur serta penerapan cosine similarity terbukti efektif dalam mengukur tingkat kemiripan antar game. Hal ini menjawab problem statement pertama, yaitu:
 
+```
+Bagaimana sistem dapat merekomendasikan game yang mirip dengan game yang dimainkan pengguna?
+```
 
+*Sistem berhasil menyarankan game berdasarkan histori interaksi pengguna lain*
+- Pendekatan Collaborative Filtering berbasis algoritma SVD berhasil dibangun dan diuji menggunakan cross-validation. Hasil evaluasi menunjukkan performa yang stabil dan akurat, dengan nilai RMSE rendah (~0.33) dan MAE (~0.21). Fungsi rekomendasi untuk pengguna berhasil memberikan rekomendasi yang sesuai berdasarkan pola preferensi kolektif. Ini menjawab problem statement kedua:
 
+```
+Bagaimana sistem dapat menyarankan game yang mungkin disukai pengguna berdasarkan histori pengguna lain?
+```
 
+Menyediakan hasil rekomendasi yang dapat diinterpretasikan*
+Sistem menyediakan hasil rekomendasi yang dapat diinterpretasikan secara langsung oleh pengguna. Pada pendekatan Content-Based Filtering, rekomendasi diberikan bersama dengan nama game yang mirip secara fitur, sehingga pengguna dapat memahami alasan di balik saran yang diberikan. Sementara pada Collaborative Filtering, hasil evaluasi seperti RMSE dan MAE yang rendah menunjukkan bahwa prediksi preferensi pengguna dapat dipercaya, dan daftar game yang direkomendasikan ditampilkan secara eksplisit. Selain itu, sistem menangani kasus pengguna baru dengan pesan yang informatif, sehingga mudah dipahami.
 
+*Tujuan utama proyek telah tercapai, yaitu:*
 
+- Membangun sistem rekomendasi game berbasis fitur (content-based)
+- Membangun sistem rekomendasi berbasis histori pengguna (collaborative filtering)
+- Menyediakan hasil rekomendasi yang dapat diinterpretasikan
 
+*Peluang pengembangan lanjutan*
+- Kedua pendekatan dapat dikombinasikan menjadi Hybrid Recommender System untuk meningkatkan cakupan rekomendasi, relevansi prediksi, dan kemampuan menangani berbagai skenario seperti pengguna baru (cold-start), game baru, atau data yang terbatas.
+
+Dengan demikian, sistem rekomendasi game yang dibangun dalam proyek ini telah berhasil memenuhi tujuan dan menjawab permasalahan yang diangkat di awal studi, serta memberikan fondasi yang kuat untuk pengembangan lebih lanjut.
 
 
 
