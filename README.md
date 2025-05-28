@@ -56,6 +56,9 @@ Dataset yang digunakan terdiri dari tiga file utama, masing-masing merepresentas
 
 - `recommendations.csv` merekam interaksi pengguna terhadap game, mencakup informasi seperti apakah game direkomendasikan, lama bermain, serta seberapa membantu atau lucu sebuah ulasan dinilai.
 
+### Sumber Data
+dapat diunduh melalui kaggle: https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam
+
 ### Jumlah Data Total
 Struktur Dataset (dari .info())
 
@@ -372,6 +375,14 @@ def recommend_for_user(user_id, n=5):
     recommended_games = games[games['app_id'].isin(top_app_ids)][['app_id', 'title']]
     return recommended_games
 ```
+
+#### Perbandingan Pendekatan
+
+| Pendekatan                  | Kelebihan                                                                 | Kekurangan                                                                 |
+|----------------------------|---------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| **Content-Based Filtering** | - Cocok untuk *cold-start user* (pengguna baru)  <br> - Tidak tergantung pada data pengguna lain | - Rekomendasi bisa monoton (mirip terus) <br> - Sulit menangkap selera kompleks pengguna |
+| **Collaborative Filtering (SVD)** | - Dapat menangkap pola kompleks dari interaksi pengguna <br> - Rekomendasi lebih personal dan beragam | - Tidak cocok untuk pengguna baru (cold-start) <br> - Perlu data interaksi yang cukup banyak |
+
 
 ## 6. Evaluasi
 
