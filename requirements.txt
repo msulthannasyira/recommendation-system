@@ -1,0 +1,6 @@
+numpy<2
+pandas>=1.5
+matplotlib>=3.5
+seaborn>=0.11
+scikit-learn>=1.2
+scikit-surprise==1.1.3
