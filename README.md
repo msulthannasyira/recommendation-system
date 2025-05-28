@@ -35,7 +35,7 @@ Proyek ini bertujuan untuk membangun sistem rekomendasi game berbasis Machine Le
 
 ### Solution Statement
 
-Untuk membangun sistem rekomendasi yang efektif dan adaptif terhadap preferensi pengguna, proyek ini mengadopsi dua pendekatan utama dalam pengembangan sistem rekomendasi, yaitu Content-Based Filtering dan Collaborative Filtering. Kedua pendekatan ini digunakan secara terpisah dan dapat dikombinasikan dalam sistem rekomendasi hybrid untuk meningkatkan akurasi dan relevansi hasil rekomendasi.
+Untuk membangun sistem rekomendasi yang efektif dan adaptif terhadap preferensi pengguna, proyek ini mengadopsi dua pendekatan utama dalam pengembangan sistem rekomendasi, yaitu Content-Based Filtering dan Collaborative Filtering. Kedua pendekatan ini digunakan secara terpisah atau dapat dikombinasikan dalam sistem rekomendasi hybrid untuk meningkatkan akurasi dan relevansi hasil rekomendasi.
 
 #### Pendekatan Content-Based Filtering
 Pendekatan Content-Based Filtering bekerja dengan cara menganalisis karakteristik atau fitur dari masing-masing game. Dalam proyek ini, fitur yang digunakan antara lain adalah average rating (rating rata-rata dari pengguna), positive ratio (rasio ulasan positif), serta dukungan terhadap berbagai platform seperti Windows, Mac, dan Linux. Dengan memanfaatkan fitur-fitur ini, sistem akan mencari game lain yang memiliki profil atau karakteristik yang serupa dengan game yang sebelumnya disukai oleh pengguna.
