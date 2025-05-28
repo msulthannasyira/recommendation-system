@@ -57,6 +57,13 @@ Dataset yang digunakan terdiri dari tiga file utama, masing-masing merepresentas
 - `recommendations.csv` merekam interaksi pengguna terhadap game, mencakup informasi seperti apakah game direkomendasikan, lama bermain, serta seberapa membantu atau lucu sebuah ulasan dinilai.
 
 ### Jumlah Data Total
+Struktur Dataset (dari .info())
+
+```python
+print(recommendations.info())
+print(games.info())
+print(users.info())
+```
 
 | Dataset               | Jumlah Baris         |
 |-----------------------|----------------------|
@@ -64,7 +71,7 @@ Dataset yang digunakan terdiri dari tiga file utama, masing-masing merepresentas
 | `users.csv`           | 715.303 pengguna     |
 | `recommendations.csv` | 2.057.740 review     |
 
-### Fitur Penting
+### Fitur Pada Dataset
 
 #### `games.csv`
 
@@ -104,6 +111,105 @@ Dataset yang digunakan terdiri dari tiga file utama, masing-masing merepresentas
 | `funny`          | Jumlah penilaian lucu terhadap review                  |
 | `date`           | Tanggal ulasan dibuat                                  |
 | `review_id`      | ID unik untuk masing-masing review                     |
+
+### Exploratory Data Analysis (EDA) + Insight
+```python
+rating_counts = games['rating'].value_counts()
+
+print("Distribusi Rating Game:")
+print(rating_counts)
+
+rating_ratio = games.groupby('rating')['positive_ratio'].mean().sort_values(ascending=False)
+
+print("\nRata-rata Positive Ratio per Rating:")
+print(rating_ratio)
+
+platform_support = games[['win', 'mac', 'linux', 'steam_deck']].mean() * 100
+
+print("\nPersentase Dukungan Platform:")
+print(platform_support.round(2))
+
+recommend_counts = recommendations['is_recommended'].value_counts(normalize=True) * 100
+
+print("\nDistribusi Review Rekomendasi (%):")
+print(recommend_counts.round(2))
+```
+
+#### 1. Distribusi rating game 
+Distribusi jumlah game berdasarkan kolom `rating`
+
+```
+Mostly Positive          1117
+Very Positive            1001
+Mixed                     737
+Overwhelmingly Positive   522
+Positive                  229
+Negative                  162
+Mostly Negative            72
+Neutral                    41
+Overwhelmingly Negative    20
+Name: rating, dtype: int64
+```
+
+- Mostly Positive dan Very Positive adalah dua kategori rating terbanyak.
+- Hal ini menunjukkan bahwa mayoritas game mendapatkan respons yang baik dari pengguna.
+
+#### 2. Positive Ratio per Rating
+Rata-rata nilai `positive_ratio` untuk tiap kategori `rating`:
+
+```
+rating
+Overwhelmingly Positive    95.205362
+Very Positive              89.416584
+Mostly Positive            79.442526
+Positive                   72.723147
+Neutral                    64.902439
+Mixed                      55.804350
+Mostly Negative            39.888889
+Negative                   34.401235
+Overwhelmingly Negative    23.650000
+Name: positive_ratio, dtype: float64
+```
+- Game dengan rating Overwhelmingly Positive dan Very Positive memiliki rasio ulasan positif > 89%.
+- Sementara itu, game dengan rating Negative dan Overwhelmingly Negative rata-ratanya hanya di kisaran 23–34%.
+
+#### 3. Dukungan Platform
+Persentase game yang mendukung masing-masing platform:
+
+```
+win           0.995385
+mac           0.387850
+linux         0.404255
+steam_deck    0.695463
+dtype: float64
+```
+
+Dalam bentuk persentase:
+- Windows: 99.54%
+- macOS: 38.78%
+- Linux: 40.43%
+- Steam Deck: 69.55%
+
+Artinya hampir semua game mendukung Windows, sementara dukungan untuk Linux dan macOS masih terbatas. Dukungan Steam Deck cukup signifikan.
+
+#### 4. Distribusi Review yang Direkomendasikan
+
+Distribusi `is_recommended` pada data:
+
+```
+True     2621
+False    1280
+Name: is_recommended, dtype: int64
+```
+
+Persentase:
+
+- Direkomendasikan (True): 67.17%
+- Tidak direkomendasikan (False): 32.83%
+
+Sekitar 2 dari 3 review menyatakan game direkomendasikan, menunjukkan kecenderungan positif dari komunitas pengguna.
+
+
 
 
 
