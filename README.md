@@ -432,9 +432,50 @@ User ID <id> tidak ditemukan dalam data pelatihan.
 ```
 
 #### Analisis hasil Output
-- Pendekatan Content-Based Filtering memungkinkan sistem untuk merekomendasikan game-game yang serupa secara fitur dengan game yang disukai pengguna, tanpa perlu interaksi pengguna lain. Hal ini sangat berguna dalam mengatasi keterbatasan data pengguna atau saat menangani game baru. Dengan menggunakan cosine similarity terhadap fitur yang dinormalisasi, sistem ini mampu mengidentifikasi kemiripan dengan akurat dan efisien.
-- Model Collaborative Filtering berbasis SVD berhasil dibangun dan dievaluasi dengan baik. Dengan akurasi prediksi yang tinggi, sistem mampu memberikan rekomendasi yang relevan berdasarkan preferensi historis pengguna. Fungsi recommend_for_user() memungkinkan personalisasi rekomendasi, dan menangani kasus pengguna baru (cold-start) dengan pemberitahuan yang sesuai.
+
+Content-Based Filtering
+- Output dari fungsi recommend_similar_games(545200) menunjukkan lima game yang direkomendasikan karena memiliki kemiripan fitur dengan game 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':
+
+| No. | app_id   | Title                                                           |
+|-----|----------|------------------------------------------------------------------|
+| 1   | 1146320  | GRID Ultimate Edition Upgrade                                    |
+| 2   | 2471820  | СТРАШНО И ТОЧКА                                                 |
+| 3   | 1637251  | Train Simulator: Southwestern Expressways: Reading Line         |
+| 4   | 2169810  | Mermaid                                                         |
+| 5   | 657590   | Grav Blazer                                                     |
+
+- Ini menunjukkan bahwa sistem berhasil mengidentifikasi game dengan atribut yang serupa, seperti genre, rating, dan dukungan platform, dan mengurutkannya berdasarkan skor kemiripan (cosine similarity).
+
+Collaborative Filtering
+- Evaluasi Kinerja Model SVD, hasil evaluasi 3-fold cross-validation:
+
+```
+RMSE rata-rata: 0.3295
+
+MAE rata-rata: 0.2135
+```
+
+Nilai error yang rendah menunjukkan bahwa model SVD mampu memprediksi rating pengguna terhadap game dengan cukup akurat dan konsisten di setiap fold.
+
+- Output Rekomendasi untuk user_id = 253880
+
+| No. | app_id   | Title                                      |
+|-----|----------|---------------------------------------------|
+| 1   | 402890   | Nyctophilia                                 |
+| 2   | 1845880  | SEARCH ALL - POTIONS                        |
+| 3   | 1672690  | Across the Galaxy: Stellar Dominator       |
+| 4   | 1764390  | BAD END THEATER                             |
+| 5   | 1336950  | VoxFox                                      |
+
+- Daftar ini menunjukkan game yang diprediksi disukai oleh pengguna berdasarkan pola historis rating dari pengguna lain yang mirip
+
+Handling Cold-Start
+- Jika `user_id` tidak ditemukan di data pelatihan, sistem menampilkan pesan, "User ID <id> tidak ditemukan dalam data pelatihan."
+- menandakan bahwa sistem memiliki mekanisme penanganan yang jelas untuk pengguna baru atau tidak dikenal, memberikan transparansi pada hasil rekomendasi
+
+Hybrid Recommender System
 - Model Content-Based Filtering dan Collaborative Filtering dapat dikembangkan lebih lanjut dan digabungkan menjadi sebuah Hybrid Recommender System. Pendekatan ini memungkinkan peningkatan dari berbagai aspek, seperti sudut pandang rekomendasi yang lebih komprehensif, cakupan (coverage) yang lebih luas, serta fleksibilitas yang lebih tinggi dalam menangani berbagai kondisi
+
 
 #### Kesimpulan Akhir
 
