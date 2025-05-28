@@ -20,8 +20,8 @@ Sistem rekomendasi yang baik tidak hanya meningkatkan kenyamanan dan pengalaman 
 Proyek ini bertujuan untuk membangun sistem rekomendasi game berbasis Machine Learning dengan menggunakan dua pendekatan utama: Content-Based Filtering dan Collaborative Filtering. Pendekatan Content-Based Filtering akan merekomendasikan game berdasarkan kesamaan atribut dengan game yang disukai pengguna, sementara Collaborative Filtering akan menggunakan pola interaksi antar pengguna dan game untuk memberikan rekomendasi. Dataset yang digunakan mencakup informasi tentang game, pengguna, serta ulasan dan rating yang diberikan oleh pengguna terhadap game.
 
 ### Referensi
-- Newzoo. (2023). Global games market report 2023 (Free version). Retrieved from https://newzoo.com/resources/trend-reports/newzoo-global-games-market-report-2023-free-version
-- Ricci, F., Rokach, L., & Shapira, B. (2022). Recommender systems handbook (3rd ed.). Springer. https://doi.org/10.1007/978-1-0716-2197-4
+- Newzoo. (2023). Global games market report 2023 (Free version). https://newzoo.com/resources/trend-reports/newzoo-global-games-market-report-2023-free-version
+- Kutalia, M. T. (2020, November 1). Trend Micro CTF 2020 — Keybox writeup. Medium. https://tatocaster.medium.com/trend-micro-ctf-2020-keybox-writeup-cf5a69d2d091
 
 ## 2. Business Understanding
 ### Problem Statements
