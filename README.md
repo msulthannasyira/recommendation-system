@@ -434,7 +434,7 @@ User ID <id> tidak ditemukan dalam data pelatihan.
 #### Analisis hasil Output
 
 Content-Based Filtering
-- Output dari fungsi recommend_similar_games(545200) menunjukkan lima game yang direkomendasikan karena memiliki kemiripan fitur dengan game 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':
+- Output dari fungsi `recommend_similar_games(545200)` menunjukkan lima game yang direkomendasikan karena memiliki kemiripan fitur dengan game 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':
 
 | No. | app_id   | Title                                                           |
 |-----|----------|------------------------------------------------------------------|
@@ -457,7 +457,7 @@ MAE rata-rata: 0.2135
 
 Nilai error yang rendah menunjukkan bahwa model SVD mampu memprediksi rating pengguna terhadap game dengan cukup akurat dan konsisten di setiap fold.
 
-- Output Rekomendasi untuk user_id = 253880
+- Output Rekomendasi untuk `user_id = 253880`
 
 | No. | app_id   | Title                                      |
 |-----|----------|---------------------------------------------|
