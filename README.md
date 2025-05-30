@@ -142,16 +142,15 @@ print(recommend_counts.round(2))
 Distribusi jumlah game berdasarkan kolom `rating`
 
 ```
-Mostly Positive          1117
-Very Positive            1001
-Mixed                     737
-Overwhelmingly Positive   522
-Positive                  229
-Negative                  162
-Mostly Negative            72
-Neutral                    41
-Overwhelmingly Negative    20
-Name: rating, dtype: int64
+Positive                   664
+Very Positive              641
+Mixed                      631
+Mostly Positive            449
+Mostly Negative             97
+Overwhelmingly Positive     45
+Negative                    12
+Very Negative                4
+Overwhelmingly Negative      1
 ```
 
 - Mostly Positive dan Very Positive adalah dua kategori rating terbanyak.
@@ -162,15 +161,15 @@ Rata-rata nilai `positive_ratio` untuk tiap kategori `rating`:
 
 ```
 rating
-Overwhelmingly Positive    95.205362
-Very Positive              89.416584
-Mostly Positive            79.442526
-Positive                   72.723147
-Neutral                    64.902439
-Mixed                      55.804350
-Mostly Negative            39.888889
-Negative                   34.401235
-Overwhelmingly Negative    23.650000
+Overwhelmingly Positive    96.200000
+Positive                   91.257530
+Very Positive              88.728549
+Mostly Positive            74.663697
+Mixed                      57.711569
+Mostly Negative            31.030928
+Overwhelmingly Negative    13.000000
+Negative                   12.416667
+Very Negative              11.500000
 Name: positive_ratio, dtype: float64
 ```
 - Game dengan rating Overwhelmingly Positive dan Very Positive memiliki rasio ulasan positif > 89%.
@@ -180,18 +179,18 @@ Name: positive_ratio, dtype: float64
 Persentase game yang mendukung masing-masing platform:
 
 ```
-win           0.995385
-mac           0.387850
-linux         0.404255
-steam_deck    0.695463
+win           98.00
+mac           26.18
+linux         18.47
+steam_deck    99.96
 dtype: float64
 ```
 
 Dalam bentuk persentase:
-- Windows: 99.54%
-- macOS: 38.78%
-- Linux: 40.43%
-- Steam Deck: 69.55%
+- Windows: 98.00%
+- macOS: 26.18%
+- Linux: 18.47%
+- Steam Deck: 99.96%
 
 Artinya hampir semua game mendukung Windows, sementara dukungan untuk Linux dan macOS masih terbatas. Dukungan Steam Deck cukup signifikan.
 
@@ -200,17 +199,17 @@ Artinya hampir semua game mendukung Windows, sementara dukungan untuk Linux dan 
 Distribusi `is_recommended` pada data:
 
 ```
-True     2621
-False    1280
-Name: is_recommended, dtype: int64
+True     85.8
+False    14.2
+Name: proportion, dtype: float64
 ```
 
 Persentase:
 
-- Direkomendasikan (True): 67.17%
-- Tidak direkomendasikan (False): 32.83%
+- Direkomendasikan (True): 85,8%
+- Tidak direkomendasikan (False): 14.2%
 
-Sekitar 2 dari 3 review menyatakan game direkomendasikan, menunjukkan kecenderungan positif dari komunitas pengguna.
+menunjukkan kecenderungan positif dari komunitas pengguna.
 
 ## 4. Data Preparation
 ### Konversi Tipe Data
@@ -325,14 +324,54 @@ print("Rekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Ca
 print(recommend_similar_games(545200))
 ```
 
-Output:
+Output (Top-N):
 ```
-      app_id         title
-1021  377160         Fallout 4
-420    550           Left 4 Dead 2
-812   620980         Cuphead
-1301  292030         The Witcher 3: Wild Hunt
-17    271590         Grand Theft Auto V
+Rekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':
+      app_id                                              title
+18   1146320                      GRID Ultimate Edition Upgrade
+85   2471820                                    СТРАШНО И ТОЧКА
+360  1637251  Train Simulator: Southwestern Expressways: Rea...
+409  2169810                                            Mermaid
+428   657590                                        Grav Blazer
+```
+
+#### Evaluasi dengan Precision@5
+
+Untuk mengevaluasi seberapa relevan hasil rekomendasi, digunakan metrik Precision@5, yang mengukur seberapa banyak rekomendasi yang benar-benar disukai pengguna dari 5 rekomendasi yang diberikan.
+
+```python
+def precision_at_k(user_game_df, game_features_df, k=5):
+    hits = 0
+    total = 0
+
+    for user_id in user_game_df['user_id'].unique():
+        liked_games = user_game_df[(user_game_df['user_id'] == user_id) & (user_game_df['is_recommended'] == True)]
+
+        if liked_games.empty:
+            continue
+        anchor_game_id = liked_games['app_id'].iloc[0]
+
+        recommended_games = recommend_similar_games(anchor_game_id, top_n=k)
+        if isinstance(recommended_games, str):
+            continue
+
+        recommended_game_ids = set(recommended_games['app_id'])
+        liked_game_ids = set(liked_games['app_id'])
+
+        hit_count = len(recommended_game_ids & liked_game_ids)
+        hits += hit_count
+        total += k
+
+    precision = hits / total if total > 0 else 0
+    return precision
+
+precision = precision_at_k(cleaned_df, games, k=5)
+print(f"\nPrecision@5 dari model Content-Based Filtering: {precision:.4f}")
+```
+
+Output Evaluasi:
+```
+Precision@5 dari model Content-Based Filtering: 0.1011
 ```
 
 ### Collaborative Filtering dengan SVD
@@ -363,6 +402,17 @@ data = Dataset.load_from_df(cf_data[['user_id', 'app_id', 'is_recommended']], re
 
 model = SVD()
 cross_validate(model, data, measures=['RMSE', 'MAE'], cv=3, verbose=True)
+```
+
+Output evaluasi:
+```python
+Evaluating RMSE, MAE of algorithm SVD on 3 split(s).
+
+                  Fold 1  Fold 2  Fold 3  Mean    Std     
+RMSE (testset)    0.3294  0.3295  0.3295  0.3295  0.0000  
+MAE (testset)     0.2139  0.2137  0.2137  0.2137  0.0001  
+Fit time          29.64   29.53   31.31   30.16   0.81    
+Test time         5.35    4.91    4.34    4.87    0.41
 ```
 
 #### Melatih Model Final
@@ -399,14 +449,15 @@ print("Rekomendasi game untuk user_id = 253880:")
 print(recommend_for_user(253880))
 ```
 
-Output:
+Output (Top-N):
 ```
-     app_id      title
-45   1228870     Hades
-112   8930       Sid Meier's Civilization V
-202  381210      Dead by Daylight
-376  72850       The Elder Scrolls V: Skyrim
-987  400         Portal
+Rekomendasi game untuk user_id = 253880:
+      app_id                       title
+35    498570       Extreme Forklifting 2
+65    554310                   Rage Wars
+100  1347030                THE CORRIDOR
+114       20       Team Fortress Classic
+120    97110  Kohan: Immortal Sovereigns
 ```
 
 #### Perbandingan Pendekatan
@@ -438,7 +489,44 @@ Rekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Card Warr
 428   657590                                        Grav Blazer
 ```
 
-### Evaluasi Model dengan Cross-Validation
+#### Hasil Evaluasinya
+
+```python
+def precision_at_k(user_game_df, game_features_df, k=5):
+    hits = 0
+    total = 0
+
+    for user_id in user_game_df['user_id'].unique():
+        liked_games = user_game_df[(user_game_df['user_id'] == user_id) & (user_game_df['is_recommended'] == True)]
+
+        if liked_games.empty:
+            continue
+        anchor_game_id = liked_games['app_id'].iloc[0]
+
+        recommended_games = recommend_similar_games(anchor_game_id, top_n=k)
+        if isinstance(recommended_games, str):
+            continue
+
+        recommended_game_ids = set(recommended_games['app_id'])
+        liked_game_ids = set(liked_games['app_id'])
+
+        hit_count = len(recommended_game_ids & liked_game_ids)
+        hits += hit_count
+        total += k
+
+    precision = hits / total if total > 0 else 0
+    return precision
+
+precision = precision_at_k(cleaned_df, games, k=5)
+print(f"\nPrecision@5 dari model Content-Based Filtering: {precision:.4f}")
+```
+
+Output Evaluasi:
+```
+Precision@5 dari model Content-Based Filtering: 0.1011
+```
+
+### Evaluasi Model Collaborative Filtering
 
 #### Hasil evaluasinya
 
@@ -446,10 +534,10 @@ Rekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Card Warr
 Evaluating RMSE, MAE of algorithm SVD on 3 split(s).
 
                   Fold 1  Fold 2  Fold 3  Mean    Std     
-RMSE (testset)    0.3303  0.3293  0.3289  0.3295  0.0006  
-MAE (testset)     0.2136  0.2131  0.2138  0.2135  0.0003  
-Fit time          29.40   30.58   30.46   30.14   0.53    
-Test time         6.27    3.40    3.52    4.40    1.32    
+RMSE (testset)    0.3294  0.3295  0.3295  0.3295  0.0000  
+MAE (testset)     0.2139  0.2137  0.2137  0.2137  0.0001  
+Fit time          29.64   29.53   31.31   30.16   0.81    
+Test time         5.35    4.91    4.34    4.87    0.41   
 ```
 
 #### Output Rekomendasi
@@ -461,12 +549,12 @@ print(recommend_for_user(253880))
 output:
 ```
 Rekomendasi game untuk user_id = 253880:
-     app_id                                 title
-14   402890                           Nyctophilia
-21  1845880                  SEARCH ALL - POTIONS
-22  1672690  Across the Galaxy: Stellar Dominator
-29  1764390                       BAD END THEATER
-54  1336950                                VoxFox
+      app_id                       title
+35    498570       Extreme Forklifting 2
+65    554310                   Rage Wars
+100  1347030                THE CORRIDOR
+114       20       Team Fortress Classic
+120    97110  Kohan: Immortal Sovereigns
 ```
 
 jika user tidak ditemukan maka akan muncul pesan berikut:
@@ -480,36 +568,54 @@ User ID <id> tidak ditemukan dalam data pelatihan.
 Content-Based Filtering
 - Output dari fungsi `recommend_similar_games(545200)` menunjukkan lima game yang direkomendasikan karena memiliki kemiripan fitur dengan game 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':
 
-| No. | app_id   | Title                                                           |
-|-----|----------|------------------------------------------------------------------|
-| 1   | 1146320  | GRID Ultimate Edition Upgrade                                    |
-| 2   | 2471820  | СТРАШНО И ТОЧКА                                                 |
-| 3   | 1637251  | Train Simulator: Southwestern Expressways: Reading Line         |
-| 4   | 2169810  | Mermaid                                                         |
-| 5   | 657590   | Grav Blazer                                                     |
+```
+Rekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':
+      app_id                                              title
+18   1146320                      GRID Ultimate Edition Upgrade
+85   2471820                                    СТРАШНО И ТОЧКА
+360  1637251  Train Simulator: Southwestern Expressways: Rea...
+409  2169810                                            Mermaid
+428   657590                                        Grav Blazer
+```
 
-- Ini menunjukkan bahwa sistem berhasil mengidentifikasi game dengan atribut yang serupa, seperti genre, rating, dan dukungan platform, dan mengurutkannya berdasarkan skor kemiripan (cosine similarity).
+- Ini menunjukkan bahwa sistem berhasil mengidentifikasi game dengan atribut yang serupa, positive_ratio, rating, dan dukungan platform (win/mac/linux/steam_deck), dan mengurutkannya berdasarkan skor kemiripan (cosine similarity).
+
+```
+Precision@5 dari model Content-Based Filtering: 0.1011
+```
+
+- Artinya, dari setiap 5 game yang direkomendasikan, rata-rata hanya sekitar 0.5 game (10.11%) yang benar-benar relevan atau disukai pengguna, menunjukkan bahwa akurasi model masih cukup rendah
+
+- akurasi yang cukup rendah ini disebabkan data menggunakan positive_ratio, rating, dan dukungan platform (win/mac/linux/steam_deck) yang kurang mewakili keunikan tiap game, terutama genre, gameplay, atau visual style yang biasa digunakan sebagai tolak ukur hubungan antara user dan game
+
+- Meskipun content-based cocok untuk cold-start user, namun tidak memperhitungkan konteks preferensi pengguna secara personal (misalnya, genre favorit atau jam bermain)
+
+- solusi termudah untuk meningkatkan akurasi ini yaitu menaambahkan Fitur tambahan seperti genre (diolah dengan TF-IDF atau one-hot encoding) serta tags atau categories
 
 Collaborative Filtering
 - Evaluasi Kinerja Model SVD, hasil evaluasi 3-fold cross-validation:
 
 ```
-RMSE rata-rata: 0.3295
-
-MAE rata-rata: 0.2135
+                  Fold 1  Fold 2  Fold 3  Mean    Std     
+RMSE (testset)    0.3294  0.3295  0.3295  0.3295  0.0000  
+MAE (testset)     0.2139  0.2137  0.2137  0.2137  0.0001  
+Fit time          29.64   29.53   31.31   30.16   0.81    
+Test time         5.35    4.91    4.34    4.87    0.41  
 ```
 
 Nilai error yang rendah menunjukkan bahwa model SVD mampu memprediksi rating pengguna terhadap game dengan cukup akurat dan konsisten di setiap fold.
 
 - Output Rekomendasi untuk `user_id = 253880`
 
-| No. | app_id   | Title                                      |
-|-----|----------|---------------------------------------------|
-| 1   | 402890   | Nyctophilia                                 |
-| 2   | 1845880  | SEARCH ALL - POTIONS                        |
-| 3   | 1672690  | Across the Galaxy: Stellar Dominator       |
-| 4   | 1764390  | BAD END THEATER                             |
-| 5   | 1336950  | VoxFox                                      |
+```
+Rekomendasi game untuk user_id = 253880:
+      app_id                       title
+35    498570       Extreme Forklifting 2
+65    554310                   Rage Wars
+100  1347030                THE CORRIDOR
+114       20       Team Fortress Classic
+120    97110  Kohan: Immortal Sovereigns
+```
 
 - Daftar ini menunjukkan game yang diprediksi disukai oleh pengguna berdasarkan pola historis rating dari pengguna lain yang mirip
 
@@ -520,11 +626,10 @@ Handling Cold-Start
 Hybrid Recommender System
 - Model Content-Based Filtering dan Collaborative Filtering dapat dikembangkan lebih lanjut dan digabungkan menjadi sebuah Hybrid Recommender System. Pendekatan ini memungkinkan peningkatan dari berbagai aspek, seperti sudut pandang rekomendasi yang lebih komprehensif, cakupan (coverage) yang lebih luas, serta fleksibilitas yang lebih tinggi dalam menangani berbagai kondisi
 
-
 #### Kesimpulan Akhir
 
 *Sistem berhasil merekomendasikan game yang mirip berdasarkan fitur game itu sendiri*
-- Dengan menggunakan pendekatan Content-Based Filtering, sistem dapat merekomendasikan game berdasarkan kemiripan atribut seperti rating konten, rasio ulasan positif, dan dukungan platform. Proses normalisasi fitur serta penerapan cosine similarity terbukti efektif dalam mengukur tingkat kemiripan antar game. Hal ini menjawab problem statement pertama, yaitu:
+- Dengan menggunakan pendekatan Content-Based Filtering, sistem dapat merekomendasikan game berdasarkan kemiripan atribut seperti rating konten, rasio ulasan positif, dan dukungan platform. Proses normalisasi fitur serta penerapan cosine similarity terbukti efektif dalam mengukur tingkat kemiripan antar game. tapi untuk keakuratan sesuai preferensi pengguna masih perlu ditingkatkan dengan menambahkan fitur pembanding baru seperti genre atau categories. Walaupun begitu, Hal ini menjawab problem statement pertama, yaitu:
 
 ```
 Bagaimana sistem dapat merekomendasikan game yang mirip dengan game yang dimainkan pengguna?
