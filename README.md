@@ -213,18 +213,6 @@ Persentase:
 Sekitar 2 dari 3 review menyatakan game direkomendasikan, menunjukkan kecenderungan positif dari komunitas pengguna.
 
 ## 4. Data Preparation
-### Penggabungan Dataset (Merge)
-Proses:
-- Dataset recommendations digabungkan dengan dataset `games` berdasarkan `app_id`.
-- Kemudian hasilnya digabungkan lagi dengan dataset `users` berdasarkan `user_id`.
-
-```python
-merged_df = recommendations.merge(games, on='app_id', how='left')
-merged_df = merged_df.merge(users, on='user_id', how='left')
-```
-
-Proses ini dilakukan untuk mendapatkan data yang lengkap dari berbagai sumber (rekomendasi, game, dan pengguna) dalam satu dataset yang dapat dianalisis secara menyeluruh.
-
 ### Konversi Tipe Data
 Proses:
 - Kolom tanggal dikonversi ke format `datetime` agar bisa diproses sebagai waktu.
@@ -239,6 +227,18 @@ recommendations['is_recommended'] = recommendations['is_recommended'].astype(boo
 ```
 
 Hal ini dilakukan agar tipe data sesuai dengan konteks analisis dan memudahkan proses manipulasi, filtering, dan visualisasi.
+
+### Penggabungan Dataset (Merge)
+Proses:
+- Dataset recommendations digabungkan dengan dataset `games` berdasarkan `app_id`.
+- Kemudian hasilnya digabungkan lagi dengan dataset `users` berdasarkan `user_id`.
+
+```python
+merged_df = recommendations.merge(games, on='app_id', how='left')
+merged_df = merged_df.merge(users, on='user_id', how='left')
+```
+
+Proses ini dilakukan untuk mendapatkan data yang lengkap dari berbagai sumber (rekomendasi, game, dan pengguna) dalam satu dataset yang dapat dianalisis secara menyeluruh.
 
 ### Menghapus Nilai Kosong pada Kolom Penting (Drop NA)
 
@@ -318,6 +318,23 @@ def recommend_similar_games(game_id, top_n=5):
         return "Game ID not found."
 ```
 
+#### Contoh Output Rekomendasi dengan Content-Based Filtering
+
+```python
+print("Rekomendasi mirip dengan 'Super Blackjack Battle 2 Turbo Edition - The Card Warriors':")
+print(recommend_similar_games(545200))
+```
+
+Output:
+```
+      app_id         title
+1021  377160         Fallout 4
+420    550           Left 4 Dead 2
+812   620980         Cuphead
+1301  292030         The Witcher 3: Wild Hunt
+17    271590         Grand Theft Auto V
+```
+
 ### Collaborative Filtering dengan SVD
 Pendekatan Collaborative Filtering digunakan untuk memberikan rekomendasi game berdasarkan preferensi pengguna lain yang memiliki pola serupa. Dalam proyek ini, digunakan algoritma SVD (Singular Value Decomposition) dari pustaka `Surprise`.
 
@@ -374,6 +391,22 @@ def recommend_for_user(user_id, n=5):
     top_app_ids = [pred.iid for pred in top_predictions]
     recommended_games = games[games['app_id'].isin(top_app_ids)][['app_id', 'title']]
     return recommended_games
+```
+
+####  Contoh Output Rekomendasi dengan Collaborative Filtering
+```python
+print("Rekomendasi game untuk user_id = 253880:")
+print(recommend_for_user(253880))
+```
+
+Output:
+```
+     app_id      title
+45   1228870     Hades
+112   8930       Sid Meier's Civilization V
+202  381210      Dead by Daylight
+376  72850       The Elder Scrolls V: Skyrim
+987  400         Portal
 ```
 
 #### Perbandingan Pendekatan
