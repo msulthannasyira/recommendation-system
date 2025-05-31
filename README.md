@@ -260,23 +260,7 @@ cleaned_df.to_csv('cleaned_recommendations.csv', index=False)
 
 Dengan menyimpan versi final dalam bentuk pdf dapat meningkatkan efisiensi karena dataset siap digunakan untuk analisis lanjutan atau pemodelan seperti content-based filtering.
 
-## 5. Modelling
-
-### Content-Based Filtering
-Pendekatan Content-Based Filtering digunakan untuk merekomendasikan game berdasarkan kemiripan fitur antar game, bukan dari preferensi pengguna lain. Pendekatan ini cocok untuk menghadapi masalah cold-start (misalnya, ketika pengguna baru belum memiliki cukup interaksi).
-
-####  Fitur yang Digunakan
-Rekomendasi dihitung berdasarkan kemiripan dari fitur-fitur game berikut:
-- `positive_ratio` Rasio ulasan positif
-- `rating` Rating konten (misalnya: "Everyone", "Mature", dll)
-
-dan juga dukungan platform:
-- `win`: Windows
-- `mac`: macOS
-- `linux`: Linux
-- `steam_deck`: Steam Deck
-
-####  Pra-pemrosesan Data
+### Pra-pemrosesan Data untuk Content-Based Filtering
 - Mengisi nilai kosong pada kolom `rating` dengan `"Unknown"`
 - Mengkodekan kategori `rating` ke bentuk numerik dengan `category.codes`
 - Normalisasi seluruh fitur numerik ke rentang 0-1 menggunakan `MinMaxScaler`
@@ -294,6 +278,34 @@ feature_matrix = content_features[['rating_encoded', 'positive_ratio', 'win', 'm
 scaler = MinMaxScaler()
 scaled_features = scaler.fit_transform(feature_matrix)
 ```
+
+### Pra-pemrosesan Data untuk Collaborative Filtering
+Dataset yang digunakan memiliki format interaksi pengguna terhadap game, dengan tiga kolom penting:
+- user_id: ID pengguna
+- app_id: ID game
+- is_recommended: Label biner (0 = tidak direkomendasikan, 1 = direkomendasikan)
+
+```python
+cf_data = recommendations[['user_id', 'app_id', 'is_recommended']].copy()
+cf_data['is_recommended'] = cf_data['is_recommended'].astype(int)
+```
+
+## 5. Modelling
+
+### Content-Based Filtering
+Pendekatan Content-Based Filtering digunakan untuk merekomendasikan game berdasarkan kemiripan fitur antar game, bukan dari preferensi pengguna lain. Pendekatan ini cocok untuk menghadapi masalah cold-start (misalnya, ketika pengguna baru belum memiliki cukup interaksi).
+
+####  Fitur yang Digunakan
+Rekomendasi dihitung berdasarkan kemiripan dari fitur-fitur game berikut:
+- `positive_ratio` Rasio ulasan positif
+- `rating` Rating konten (misalnya: "Everyone", "Mature", dll)
+
+dan juga dukungan platform:
+- `win`: Windows
+- `mac`: macOS
+- `linux`: Linux
+- `steam_deck`: Steam Deck
+
 #### Perhitungan Kemiripan Game
 Setelah fitur dinormalisasi, dihitung matriks kemiripan antar game menggunakan cosine similarity. Game yang mirip akan memiliki skor kemiripan mendekati 1
 
@@ -376,17 +388,6 @@ Precision@5 dari model Content-Based Filtering: 0.1011
 
 ### Collaborative Filtering dengan SVD
 Pendekatan Collaborative Filtering digunakan untuk memberikan rekomendasi game berdasarkan preferensi pengguna lain yang memiliki pola serupa. Dalam proyek ini, digunakan algoritma SVD (Singular Value Decomposition) dari pustaka `Surprise`.
-
-#### Persiapan Data
-Dataset yang digunakan memiliki format interaksi pengguna terhadap game, dengan tiga kolom penting:
-- user_id: ID pengguna
-- app_id: ID game
-- is_recommended: Label biner (0 = tidak direkomendasikan, 1 = direkomendasikan)
-
-```python
-cf_data = recommendations[['user_id', 'app_id', 'is_recommended']].copy()
-cf_data['is_recommended'] = cf_data['is_recommended'].astype(int)
-```
 
 #### Evaluasi Model dengan Cross-Validation
 Model dilatih menggunakan evaluasi 3-fold cross-validation untuk mengukur performa dengan metrik:
